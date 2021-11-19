@@ -7,21 +7,24 @@
 #      Version: V0.4
 ########################################################################
 #
-import json
-import math
-import urllib.request
+import json                     # JSON Modules
+import math                     # Math Modules
+import urllib.request           # URL Request
+import signal                   # Trap SIGTERM Events 
 
+from time import sleep          # only need Sleep
+from datetime import datetime   # Date Time Module
+from pathlib import Path        # Path Module
 
-from time import sleep
-from datetime import datetime
-from pathlib import Path
-
-import RPi.GPIO as GPIO
-import RGB1602
-import Freenove_DHT as DHT
+import RPi.GPIO as GPIO         # GPIO Required
+import RGB1602                  # Module Supplied in this Package
+import Freenove_DHT as DHT      # Module Supplied in this Package
 
 # Production Flag
 PRODUCTION = False
+
+# DEBUG FLAG
+DEBUG_FLAG = False
 
 #
 # Set Flight Counters
@@ -54,13 +57,25 @@ FLIGHT_METRICS = {
 URL_AIRCRAFT_DATA = "http://flightaware.local:8080/data/aircraft.json"
 PATH_INSTALLED_DIRECTORY = "/home/pi/FlightControl/Data/"
 
-
+#
+# If this code is installed on the same device as the FlightAware 
+# Software, then you only need call localhost and not resolve the 
+# hostname.
+#
 if PRODUCTION:
     URL_AIRCRAFT_DATA = "http://localhost:8080/data/aircraft.json"
-    PATH_INSTALLED_DIRECTORY = "/home/pi/FlightControl/Data/"
+
+#
+# Segregate Development Streams and Data Files from Production
+# Good Practice and saves headaches when changing data/file formats
+#
+if DEBUG_FLAG:
+    PATH_INSTALLED_DIRECTORY = "/home/pi/Development/FlightControl/Data/"
+
 
 PATH_INTERNAL_DATA_FILE = PATH_INSTALLED_DIRECTORY + "internalData.json"
 PATH_INTERNAL_STATS_FILE = PATH_INSTALLED_DIRECTORY + "statsData.json"
+PATH_INTERNAL_ICAO_FILE = PATH_INSTALLED_DIRECTORY + "ICAOData.json"
 
 
 # Add Special Squawk Codes You're Interested in Here
@@ -73,12 +88,6 @@ SPECIAL_SQUAWK_CODES = ["7700", "7600", "7500"]
 
 # Used for determining if internalData needs writing to file.
 DIRTY_DATA_FLAG = False
-
-
-# DEBUG FLAG
-DEBUG_FLAG = False
-
-
 
 #
 #   Define the InfraRed Motion Sensor Pin
@@ -93,6 +102,10 @@ dht = DHT.DHT(HYGRO_PIN)
 #
 _backLightStatus = True
 
+#
+# Maintain a Daily Dictionary of ICAO Flight information 
+# Used for counting flights in 24 hour period etc.
+#
 ICAO_FLIGHT_DICTIONARY = [""]
 
 #
@@ -100,8 +113,7 @@ ICAO_FLIGHT_DICTIONARY = [""]
 #
 # Initialise the LCD Display
 #
-lcd=RGB1602.RGB1602(16,2)
-#lcd = i2clcd.i2clcd(i2c_bus=1, i2c_addr=0x3F, lcd_width=16)
+lcd = RGB1602.RGB1602(16,2)
 lcd.clear()
 lcd.set_backlight(_backLightStatus)
 
@@ -111,6 +123,9 @@ lcd.set_backlight(_backLightStatus)
 def getDateNow():               # get system time
     return datetime.now().strftime('%a %d %b %Y')
 
+#
+# Get Today's Time
+#
 def getTimeNow():               # get system time
     return datetime.now().strftime('%H:%M')
 
@@ -130,11 +145,14 @@ def defaultValues():
     FLIGHT_METRICS['flightMaxAllTime'] = 0
     FLIGHT_METRICS['flightDailyTotal'] = 0
     FLIGHT_METRICS['max24'] = 0
-    FLIGHT_METRICS['lowestRoomTemp'] = -273.15
+    FLIGHT_METRICS['lowestRoomTemp'] = 999
+    FLIGHT_METRICS['highestRoomTemp'] = -273.15
     FLIGHT_METRICS['todaysDate'] = getDateNow()
     FLIGHT_METRICS['flightBestDayDate'] = getDateNow()
     FLIGHT_METRICS['flightBestDayTotal'] = 0
     FLIGHT_METRICS['pirSensorLastTrigger'] = getDateNow()
+
+    ICAO_FLIGHT_DICTIONARY[0] = getDateNow()
 
 #
 # Clear Metrics To be Updated by Parsing the aircraft.json file
@@ -168,6 +186,7 @@ def clearFlightMetricsDailyCutover():
 
     # Empty the total flight Dictionary for 24 hours period.
     ICAO_FLIGHT_DICTIONARY.clear()
+    ICAO_FLIGHT_DICTIONARY.append(getDateNow())
 
 #
 # Check if Internal Data Available and if so
@@ -175,6 +194,7 @@ def clearFlightMetricsDailyCutover():
 #
 def loadData():
     global FLIGHT_METRICS
+    global ICAO_FLIGHT_DICTIONARY
 
     try:
         # initialise default metrics.
@@ -193,6 +213,29 @@ def loadData():
                 # Copy elements to Global Dictionary (Takes Care in part of versioning)
                 for element in lastKnownData:
                     FLIGHT_METRICS[element] = lastKnownData[element]
+
+
+        # Load the ICAO Data (if available), Discard if not today's feed
+
+        # Delete All Data
+        
+        savedICAO = Path(PATH_INTERNAL_ICAO_FILE)
+        # If a file exists, load the ICAO Dictionary
+        if savedICAO.is_file():
+            with open(PATH_INTERNAL_ICAO_FILE) as json_file:
+                # Load the JSON Data to a Temp Dictionary
+                ICAO_FLIGHT_DICTIONARY = json.load(json_file)
+            
+            if len(ICAO_FLIGHT_DICTIONARY) > 0:
+                if ICAO_FLIGHT_DICTIONARY[0] != getDateNow():
+                    ICAO_FLIGHT_DICTIONARY.clear()
+                    ICAO_FLIGHT_DICTIONARY.append(getDateNow())
+
+    except ValueError:
+        print(f"Invalid JSON File Detected: {json_file.name}")
+        print("Continuing with Defaults...")
+        ICAO_FLIGHT_DICTIONARY.clear()
+        ICAO_FLIGHT_DICTIONARY.append(getDateNow())
     except:
         exit(1)
 
@@ -218,10 +261,17 @@ def reportErrorMessage(mess1, mess2):
 #
 def writeInternalData():
     try:
+        # Write Internal Metrics
         with open(PATH_INTERNAL_DATA_FILE,'w') as fp:
             json.dump(FLIGHT_METRICS, fp)
             fp.flush()
             fp.close()
+
+        # Store a Copy of the ICAO file
+        with open(PATH_INTERNAL_ICAO_FILE,'w') as fp2:
+            json.dump(ICAO_FLIGHT_DICTIONARY, fp2)
+            fp2.flush()
+            fp2.close()
     except:
         quitWithErrorMessage("Failed to Write","Metrics File")
 
@@ -337,7 +387,7 @@ def parseFlightData():
         DIRTY_DATA_FLAG = True
 
     # Maximum Daily Flight Metrics Stats
-    if FLIGHT_METRICS['flightMax'] >  FLIGHT_METRICS['flightMaxAllTime']:
+    if FLIGHT_METRICS['flightMax'] > FLIGHT_METRICS['flightMaxAllTime']:
         FLIGHT_METRICS['flightMaxAllTime'] = FLIGHT_METRICS['flightMax']
         DIRTY_DATA_FLAG = True
 
@@ -424,8 +474,8 @@ def get_room_temp():
             FLIGHT_METRICS['highestRoomTemp'] = dht.temperature
             DIRTY_DATA_FLAG = True
 
-        if FLIGHT_METRICS['lowestRoomHumidity'] > dht.temperature:
-            FLIGHT_METRICS['lowestRoomHumidity'] = dht.temperature
+        if FLIGHT_METRICS['lowestRoomHumidity'] > dht.humidity:
+            FLIGHT_METRICS['lowestRoomHumidity'] = dht.humidity
             DIRTY_DATA_FLAG = True
 
         if FLIGHT_METRICS['highestRoomHumidity'] < dht.humidity:
@@ -530,12 +580,30 @@ def showEmergencyAircraft(aircraft):
 
         lcd.setColorBlue()
 
+
+#
+# Signal Handler
+#
+def sigterm_handler(_signo, _stack_frame):
+    handleShutdownGracefully()
+    destroy()
+    exit(0)
+
+#
+# Any shutdown tasks to be added here
+#
+def handleShutdownGracefully():
+    writeInternalData()
+    GPIO.cleanup()
+
+
 #
 # Main Program Loop
 #
 def loop():
     global DIRTY_DATA_FLAG
     counter = 0
+    sleepCounter = 0
 
     if DEBUG_FLAG:
         counter = 11
@@ -577,6 +645,10 @@ def loop():
         else:
             # Reset Counter so LCD At start of Wake Up
             counter = 0
+            sleepCounter += 1
+            if sleepCounter > 11:
+                get_room_temp()
+                sleepCounter = 0
 
 
         if DIRTY_DATA_FLAG:
@@ -589,12 +661,20 @@ def loop():
 # Main Program...
 #
 if __name__ == '__main__':
+    signal.signal(signal.SIGTERM, sigterm_handler)
     setup()
 
     try:
         loop()
-    except KeyboardInterrupt:
-        destroy()
 
-    writeInternalData()
+    except KeyboardInterrupt:
+        print("Stopped by User")
+
+    finally:
+        destroy()
+        print("Quitting Gracefully")
+        handleShutdownGracefully()
+
+
+    #writeInternalData()
     #destroy()
