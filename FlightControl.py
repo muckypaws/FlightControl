@@ -7,8 +7,14 @@
 #      Version: V0.4
 ########################################################################
 #
+# 19th November 2021
+#   fix-cutover-best-date
+#
+#       When cutover occurs the best date for maximum flights is overwritten
+#       with the current date.  Fixed
+#
+
 import json                     # JSON Modules
-import math                     # Math Modules
 import urllib.request           # URL Request
 import signal                   # Trap SIGTERM Events 
 
@@ -216,9 +222,8 @@ def loadData():
 
 
         # Load the ICAO Data (if available), Discard if not today's feed
-
-        # Delete All Data
         
+        ICAO_FLIGHT_DICTIONARY.clear()
         savedICAO = Path(PATH_INTERNAL_ICAO_FILE)
         # If a file exists, load the ICAO Dictionary
         if savedICAO.is_file():
@@ -236,6 +241,7 @@ def loadData():
         print("Continuing with Defaults...")
         ICAO_FLIGHT_DICTIONARY.clear()
         ICAO_FLIGHT_DICTIONARY.append(getDateNow())
+
     except:
         exit(1)
 
@@ -246,7 +252,7 @@ def quitWithErrorMessage(mess1, mess2):
     lcd.clear()
     lcd.print_line(mess1, line=0)
     lcd.print_line(mess2, line=1)
-    exit(1)
+    exit(0)
 
 #
 # Helper function, Display Error Message
@@ -268,10 +274,10 @@ def writeInternalData():
             fp.close()
 
         # Store a Copy of the ICAO file
-        with open(PATH_INTERNAL_ICAO_FILE,'w') as fp2:
-            json.dump(ICAO_FLIGHT_DICTIONARY, fp2)
-            fp2.flush()
-            fp2.close()
+        with open(PATH_INTERNAL_ICAO_FILE,'w') as fp:
+            json.dump(ICAO_FLIGHT_DICTIONARY, fp)
+            fp.flush()
+            fp.close()
     except:
         quitWithErrorMessage("Failed to Write","Metrics File")
 
@@ -399,7 +405,7 @@ def parseFlightData():
 
     if FLIGHT_METRICS['flightBestDayTotal'] < FLIGHT_METRICS['flightDailyTotal']:
         FLIGHT_METRICS['flightBestDayTotal'] = FLIGHT_METRICS['flightDailyTotal']
-        FLIGHT_METRICS['flightBestDayDate'] = getDateNow()
+        FLIGHT_METRICS['flightBestDayDate'] = FLIGHT_METRICS['todaysDate']
 
     return SpecialFlights
 
@@ -661,9 +667,13 @@ def loop():
 # Main Program...
 #
 if __name__ == '__main__':
+    # Trap SIGTERM Events
     signal.signal(signal.SIGTERM, sigterm_handler)
+
+    # Initialisation
     setup()
 
+    # Main Loop - Really Complex...
     try:
         loop()
 
@@ -675,6 +685,3 @@ if __name__ == '__main__':
         print("Quitting Gracefully")
         handleShutdownGracefully()
 
-
-    #writeInternalData()
-    #destroy()
