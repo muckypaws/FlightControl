@@ -21,8 +21,16 @@ To run as a background Process.
 
 The hardware required for the project can be found in the **additional/Fritzing** directory.  If you're unfamiliar with Fritz, this can be downloaded here: <https://fritzing.org>
 
+
+## STL Files to print case and wall mount
+
+Can be found in the project under additional/3DPrinting or via my Thingiverse 
+<https://www.thingiverse.com/thing:4978346>
+
+
+
 ## Please Note
 
 This is a work in progress, any bugs please report them in the official GitHub Repo https://github.com/muckypaws/FlightControl.git
 
-Project Article will be added to my Website: <https://www.muckypaws.com>
+Project Article will be added to my Website: <https://www.muckypaws.com> this will be updated once the article has been published.
