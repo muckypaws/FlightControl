@@ -189,6 +189,11 @@ def clearFlightMetricsDailyCutover():
     FLIGHT_METRICS['highestRoomTemp'] = -273.15
     FLIGHT_METRICS['todaysDate'] = getDateNow()
     FLIGHT_METRICS['flightBestDayTotal'] = 0
+    FLIGHT_METRICS['lowestRoomHumidity'] = 999
+    FLIGHT_METRICS['highestRoomHumidity'] = -1
+    FLIGHT_METRICS['lowestRoomTemp'] = 99.0
+    FLIGHT_METRICS['highestRoomTemp'] = -273.15
+    # FLIGHT_METRICS['flightBestDayTotal'] = 0
 
     # Empty the total flight Dictionary for 24 hours period.
     ICAO_FLIGHT_DICTIONARY.clear()
