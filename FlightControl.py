@@ -188,7 +188,7 @@ def clearFlightMetricsDailyCutover():
     FLIGHT_METRICS['lowestRoomTemp'] = 1000
     FLIGHT_METRICS['highestRoomTemp'] = -273.15
     FLIGHT_METRICS['todaysDate'] = getDateNow()
-    FLIGHT_METRICS['flightBestDayTotal'] = 0
+    # FLIGHT_METRICS['flightBestDayTotal'] = 0
     FLIGHT_METRICS['lowestRoomHumidity'] = 999
     FLIGHT_METRICS['highestRoomHumidity'] = -1
     FLIGHT_METRICS['lowestRoomTemp'] = 99.0
