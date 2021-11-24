@@ -33,7 +33,4 @@ Can be found in the project under additional/3DPrinting or via my Thingiverse
 
 This is a work in progress, any bugs please report them in the official GitHub Repo https://github.com/muckypaws/FlightControl.git
 
-Project Article will be added to my Website: <https://www.muckypaws.com> this will be updated once the article has been published.
-
-
-
+For more details on this project, please visit my article at <https://muckypaws.com/2021/11/22/ground-control-to-major-tom-part-3-dashboard/>
