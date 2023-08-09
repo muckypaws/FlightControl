@@ -17,6 +17,9 @@ Data/statsData.json
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
 
+*.txt
+test.py
+
 # Mono auto generated files
 mono_crash.*
 

@@ -13,6 +13,13 @@
 #       When cutover occurs the best date for maximum flights is overwritten
 #       with the current date.  Fixed
 #
+########################################################################
+#
+# 8th August 2023
+#   Change Pin 18 (GPIO24) Blue LED Indicator to Allow PIMORONI Weather HAT
+#   To co-exist on same board.
+#
+ 
 
 import json                     # JSON Modules
 import urllib.request           # URL Request
@@ -98,9 +105,9 @@ DIRTY_DATA_FLAG = False
 #
 #   Define the InfraRed Motion Sensor Pin
 #
-sensorPin = 23      #GPIO 18 (Not PIN 18) in BCM Mode
-ledPin = 24         #GPIO 17 (Not PIN 17) in BCM Mode
-HYGRO_PIN = 25
+sensorPin = 26      #GPIO 37 (Not PIN 26) in BCM Mode
+ledPin = 24         #GPIO 18 (Not PIN 24) in BCM Mode
+HYGRO_PIN = 25      #GPIO 22
 dht = DHT.DHT(HYGRO_PIN)
 
 #
@@ -504,7 +511,7 @@ def setup():
     GPIO.setup(ledPin, GPIO.OUT)
     GPIO.setup(HYGRO_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
     
-    #GPIO.output(ledPin, GPIO.HIGH)
+    GPIO.output(ledPin, GPIO.LOW)
     GPIO.add_event_detect(sensorPin, GPIO.BOTH, callback=PIR_Callback)
 
     # One time check to see if PIR Triggered and set state correctly.
